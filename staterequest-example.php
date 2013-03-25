@@ -22,4 +22,4 @@
 	fwrite($fp, chr(50));
 	$a = fread($fp, 10);
 	
-	echo strToHex($a);
+	echo strToBin($a);
