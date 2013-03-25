@@ -43,20 +43,20 @@
   | Description   :  The simple udp server main                  |
   +--------------------------------------------------------------+*/
 
-
+  
 int main(int argc, char **argv) {
 
     struct sockaddr_in si_local, si_remote;
-    int s, i, j, interval;
+    int s, i, j, interval ,n , lastpacketsize;
     int port;
     size_t slen;
     char buf[BUFLEN];
-
-
+    char laststate[BUFLEN];
+	
 	if (!bcm2835_init()){
 		return 1;
 	}
-
+	lastpacketsize = 0;
 	bcm2835_gpio_fsel(RPI_GPIO_P1_16, BCM2835_GPIO_FSEL_OUTP); 
 	bcm2835_gpio_fsel(RPI_GPIO_P1_18, BCM2835_GPIO_FSEL_OUTP); 
 	bcm2835_gpio_fsel(RPI_GPIO_P1_22, BCM2835_GPIO_FSEL_OUTP); 
@@ -76,7 +76,8 @@ int main(int argc, char **argv) {
     }
 
 /*   demonize(argv[0]); */
-   demonize(argv[0]); 
+
+    demonize(argv[0]);
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
         perror("socket");
         exit(EXIT_FAILURE);
@@ -92,42 +93,51 @@ int main(int argc, char **argv) {
     }
 
     while (1) {
-        memset(buf, 0, sizeof (char) *BUFLEN);
-        if (recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_remote, &slen) == -1) {
-            perror("recvfrom()");
-            exit(EXIT_FAILURE);
-        }
-        
+			memset(buf, 0, sizeof (char) *BUFLEN);
+			n=recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_remote, &slen);
+			/* 
+			//if (
+			== -1) {
+				perror("recvfrom()");
+				exit(EXIT_FAILURE);
+			}*/
+			
+			/*  printf("Data received %i ", buf[0] ); */
+			
+			if(buf[0]==50){
+				sendto(s,laststate,lastpacketsize,0,(struct sockaddr *)&si_remote,slen);
+				printf("state request %s:%d \n", inet_ntoa(si_remote.sin_addr), ntohs(si_remote.sin_port));
+			}else{
+				printf("%s:%d ", inet_ntoa(si_remote.sin_addr), ntohs(si_remote.sin_port));
+				laststate[0]=buf[0];
+				lastpacketsize = n;
+				for (j = 1; j < buf[0]; j++) {
+				   for (i = 0; i < 8; i++) {
+					laststate[j]=buf[j];
+					if((buf[j] & (0x80 >> i))>0){
+						bcm2835_gpio_write(RPI_GPIO_P1_16, HIGH);
+						printf("1");
+					}else{
+						bcm2835_gpio_write(RPI_GPIO_P1_16,LOW);
+						printf("0");
+					}
 
-  /*  printf("Data received %i ", buf[0] ); */
-            for (j = 1; j < buf[0]; j++) {
-               for (i = 0; i < 8; i++) {
-
-
-                if((buf[j] & (0x80 >> i))>0){
-			bcm2835_gpio_write(RPI_GPIO_P1_16, HIGH);
-			printf("1");
-		}else{
-			bcm2835_gpio_write(RPI_GPIO_P1_16,LOW);
-			printf("0");
+						usleep(interval);
+						bcm2835_gpio_write(RPI_GPIO_P1_18, HIGH);
+						usleep(interval);
+						bcm2835_gpio_write(RPI_GPIO_P1_16, LOW);
+						bcm2835_gpio_write(RPI_GPIO_P1_18, LOW);
+						usleep(interval);
+					}
+					printf(" ");
+				}
+				printf("\n");
+				usleep(interval);
+				bcm2835_gpio_write(RPI_GPIO_P1_22, HIGH);
+				usleep(interval);
+				bcm2835_gpio_write(RPI_GPIO_P1_22, LOW);
+			}
 		}
-
-                    usleep(interval);
-            	    bcm2835_gpio_write(RPI_GPIO_P1_18, HIGH);
-                    usleep(interval);
-		    bcm2835_gpio_write(RPI_GPIO_P1_16, LOW);
-	            bcm2835_gpio_write(RPI_GPIO_P1_18, LOW);
-                    usleep(interval);
-                }
-		printf(" ");
-            }
-		printf("\n");
-
-            usleep(interval);
-            bcm2835_gpio_write(RPI_GPIO_P1_22, HIGH);
-            usleep(interval);
-            bcm2835_gpio_write(RPI_GPIO_P1_22, LOW);
-        }
 
     close(s);
     exit(EXIT_SUCCESS);
