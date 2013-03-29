@@ -1,23 +1,3 @@
-/*+--------------------------------------------------------------+
-  |            server.c  -  description                          |
-  |                -------------------                           |
-  | begin      : 08/01/2010 13.00                                |
-  | copyleft   : (C) 2010 xAppSoftware                           |
-  | author     : Luigi D'Andrea                                  |
-  | email      : gg1 ( at ) xappsoftware dot com                 |
-  | compiling  : gcc -o server server.c                          |
-  |                                                              |
-  | Latest version on http://www.xappsoftware.com                |
-  +--------------------------------------------------------------+
-  | udp client-server may be redistributed and modified under    |
-  | certain conditions. This software is distributed on an       |
-  | "AS IS" basis WITHOUT WARRANTY OF ANY KIND, either express or|
-  ! implied.  See the file License.txt for details.              |
-  +--------------------------------------------------------------+*/
-
-/*+--------------------------------------------------------------+
-  | SYSTEM INCLUDES                                              |
-  +--------------------------------------------------------------+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -31,18 +11,12 @@
 #include <sys/ioctl.h>
 #include <bcm2835.h>
 
-/*+--------------------------------------------------------------+
-  | SPECIFIC INCLUDES                                            |
-  +--------------------------------------------------------------+*/
 #include "clientserver.h"
 #include "demonize.h"
 
-/*+--------------------------------------------------------------+
-  | Function name :  main                                        |
-  | Parameters    :  The port number                             |
-  | Description   :  The simple udp server main                  |
-  +--------------------------------------------------------------+*/
-
+#define DI_PIN RPI_GPIO_P1_18 
+#define CL_PIN RPI_GPIO_P1_22
+#define CE_PIN RPI_GPIO_P1_16
   
 int main(int argc, char **argv) {
 
@@ -52,14 +26,13 @@ int main(int argc, char **argv) {
     size_t slen;
     char buf[BUFLEN];
     char laststate[BUFLEN];
-	
 	if (!bcm2835_init()){
 		return 1;
 	}
 	lastpacketsize = 0;
-	bcm2835_gpio_fsel(RPI_GPIO_P1_16, BCM2835_GPIO_FSEL_OUTP); 
-	bcm2835_gpio_fsel(RPI_GPIO_P1_18, BCM2835_GPIO_FSEL_OUTP); 
-	bcm2835_gpio_fsel(RPI_GPIO_P1_22, BCM2835_GPIO_FSEL_OUTP); 
+	bcm2835_gpio_fsel(DI_PIN, BCM2835_GPIO_FSEL_OUTP); 
+	bcm2835_gpio_fsel(CL_PIN, BCM2835_GPIO_FSEL_OUTP); 
+	bcm2835_gpio_fsel(CE_PIN, BCM2835_GPIO_FSEL_OUTP); 
 
     slen = sizeof (si_remote);
     if (argc != 3) {
@@ -75,9 +48,9 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-/*   demonize(argv[0]); */
-
+/*  demonize(argv[0]); */
     demonize(argv[0]);
+
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
         perror("socket");
         exit(EXIT_FAILURE);
@@ -115,27 +88,27 @@ int main(int argc, char **argv) {
 				   for (i = 0; i < 8; i++) {
 					laststate[j]=buf[j];
 					if((buf[j] & (0x80 >> i))>0){
-						bcm2835_gpio_write(RPI_GPIO_P1_16, HIGH);
+						bcm2835_gpio_write(DI_PIN, HIGH);
 						printf("1");
 					}else{
-						bcm2835_gpio_write(RPI_GPIO_P1_16,LOW);
+						bcm2835_gpio_write(DI_PIN,LOW);
 						printf("0");
 					}
 
 						usleep(interval);
-						bcm2835_gpio_write(RPI_GPIO_P1_18, HIGH);
+						bcm2835_gpio_write(CL_PIN, HIGH);
 						usleep(interval);
-						bcm2835_gpio_write(RPI_GPIO_P1_16, LOW);
-						bcm2835_gpio_write(RPI_GPIO_P1_18, LOW);
+						bcm2835_gpio_write(DI_PIN, LOW);
+						bcm2835_gpio_write(CL_PIN, LOW);
 						usleep(interval);
 					}
 					printf(" ");
 				}
 				printf("\n");
 				usleep(interval);
-				bcm2835_gpio_write(RPI_GPIO_P1_22, HIGH);
+				bcm2835_gpio_write(CE_PIN, HIGH);
 				usleep(interval);
-				bcm2835_gpio_write(RPI_GPIO_P1_22, LOW);
+				bcm2835_gpio_write(CE_PIN, LOW);
 			}
 		}
 
