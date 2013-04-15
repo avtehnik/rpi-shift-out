@@ -29,53 +29,55 @@
 int main(int argc, char **argv) {
 
     struct sockaddr_in si_local, si_remote;
-    int s, i, j, interval ,n , lastpacketsize, lampindex;
+    int s, i, j, interval ,n , lastpacketsize, lampindex, c;
     int port;
     size_t slen;
     char buf[BUFLEN];
     char laststate[BUFLEN];
 	int lamps[LAMPS_COUNT];
 	int map[LAMPS_COUNT];
-	map[0] = 0; 
-	map[1] = 33; 
-	map[2] = 34; 
-	map[3] = 35; 
-	map[4] = 36; 
-	map[5] = 37; 
-	map[6] = 38; 
-	map[7] = 39;
-	map[8] = 2; 
-	map[9] = 3; 
-	map[10] = 4; 
-	map[11] = 5; 
-	map[12] = 6; 
-	map[13] = 7; 
-	map[14] = 8; 
-	map[15] = 9; 
-	map[16] = 10; 
-	map[17] = 11; 
-	map[18] = 12; 
-	map[19] = 13; 
-	map[20] = 14; 
-	map[21] = 15; 
-	map[22] = 16; 
-	map[23] = 17; 
-	map[24] = 18; 
-	map[25] = 19; 
-	map[26] = 20; 
-	map[27] = 21; 
-	map[28] = 22; 
-	map[29] = 23; 
-	map[30] = 24; 
-	map[31] = 25; 
-	map[32] = 26; 
-	map[33] = 27; 
-	map[34] = 28; 
-	map[35] = 29; 
-	map[36] = 30;
-	map[37] = 31;
-	map[38] = 32; 
-	map[39] = 40;
+	map[0] = 33;
+	map[1] = 34; 
+	map[2] = 35; 
+	map[3] = 36; 
+	map[4] = 37; 
+	map[5] = 38; 
+	map[6] = 39; 
+	map[7] = 3;
+	map[8] = 4; 
+	map[9] = 5; 
+	map[10] = 6; 
+	map[11] = 7; 
+	map[12] = 8; 
+	map[13] = 9; 
+	map[14] = 10; 
+	map[15] = 11; 
+	map[16] = 12; 
+	map[17] = 13; 
+	map[18] = 14; 
+	map[19] = 15; 
+	map[20] = 16; 
+	map[21] = 17; 
+	map[22] = 18; 
+	map[23] = 19; 
+	map[24] = 20; 
+	map[25] = 21; 
+	map[26] = 22; 
+	map[27] = 23; 
+	map[28] = 24; 
+	map[29] = 25; 
+	map[30] = 26; 
+	map[31] = 27; 
+	map[32] = 29; 
+	map[33] = 28; 
+	map[34] = 30; 
+	map[35] = 31; 
+	map[36] = 32;
+	map[37] = 0;
+	map[38] = 1; 
+	map[39] = 2;
+	
+	
  	if (!bcm2835_init()){
 		return 1;
 	}
@@ -100,7 +102,8 @@ int main(int argc, char **argv) {
     }
 
 /*  demonize(argv[0]); */
-
+	demonize(argv[0]);
+	
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
         perror("socket");
         exit(EXIT_FAILURE);
@@ -114,7 +117,7 @@ int main(int argc, char **argv) {
         perror("bind");
         exit(EXIT_FAILURE);
     }
-
+	lampindex = 0;
     while (1) {
 			memset(buf, 0, sizeof (char) *BUFLEN);
 			n=recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_remote, &slen);
@@ -131,7 +134,7 @@ int main(int argc, char **argv) {
 				sendto(s,laststate,lastpacketsize,0,(struct sockaddr *)&si_remote,slen);
 				printf("state request %s:%d \n", inet_ntoa(si_remote.sin_addr), ntohs(si_remote.sin_port));
 			}else{
-				//printf("%s:%d ", inet_ntoa(si_remote.sin_addr), ntohs(si_remote.sin_port));
+				/* printf("%s:%d ", inet_ntoa(si_remote.sin_addr), ntohs(si_remote.sin_port)); */
 				laststate[0]=buf[0]; 
 				lastpacketsize = n;
  
@@ -139,25 +142,20 @@ int main(int argc, char **argv) {
 				for (j = 1; j < buf[0]; j++) {
 					laststate[j]=buf[j];
 				   for (i = 0; i < 8; i++) {
-						if((buf[j] & (0x80 >> i))>0){
-							//printf(" %d - %d \n", lampindex , map[lampindex]);
-							lamps[map[lampindex]] = 1;
-						}else{
-							lamps[map[lampindex]] = 0;
-						}
+						/* printf(" %d - %d \n", lampindex , map[lampindex]); */
+						lamps[map[lampindex]] = (buf[j] & (0x80 >> i))>0;
 						lampindex++;
 					}
 				}
 				
-				   for (i = 0; i < 40; i++) {
-						if(lamps[i]==1){
-							bcm2835_gpio_write(DI_PIN, HIGH);
-						//	printf("1");
-						}else{
-							bcm2835_gpio_write(DI_PIN,LOW);
-						//	printf("0");
+				   for (c = 0; c < 40; c++) {
+				   /*
+						printf("%d" , lamps[c]);
+						if(lamps[c]){
+							printf(" %d - %d \n", c , lamps[c]);
 						}
-
+					*/
+						bcm2835_gpio_write(DI_PIN,lamps[c]);
 						usleep(interval);
 						bcm2835_gpio_write(CL_PIN, HIGH);
 						usleep(interval);
@@ -165,8 +163,7 @@ int main(int argc, char **argv) {
 						bcm2835_gpio_write(CL_PIN, LOW);
 						usleep(interval);
 					}
-				//printf(" ");
-				//printf("\n");
+				/*printf("\n"); */
 				usleep(interval);
 				bcm2835_gpio_write(CE_PIN, HIGH);
 				usleep(interval);
