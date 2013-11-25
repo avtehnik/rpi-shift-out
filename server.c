@@ -16,8 +16,8 @@
 #include "demonize.h"
 
 #define DI_PIN RPI_GPIO_P1_18 
-#define CL_PIN RPI_GPIO_P1_22
-#define CE_PIN RPI_GPIO_P1_16
+#define CL_PIN RPI_GPIO_P1_16
+#define CE_PIN RPI_GPIO_P1_22
 #define true 1
 #define false 0
 
@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
     }
 
 /*  demonize(argv[0]); */
-	demonize(argv[0]);
+//	demonize(argv[0]);
 	
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
         perror("socket");
